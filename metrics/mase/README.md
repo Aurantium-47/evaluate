@@ -1,6 +1,6 @@
 ---
 title: MASE
-emoji: 🤗 
+emoji: ?? 
 colorFrom: blue
 colorTo: red
 sdk: gradio
@@ -26,7 +26,7 @@ This metric is:
 *  independent of the scale of the data;
 * has predictable behavior when predicted/ground-truth data is near zero;
 *  symmetric;
-* interpretable,  as values greater than one indicate that in-sample one-step forecasts from the naïve method perform better than the forecast values under consideration.
+* interpretable,  as values greater than one indicate that in-sample one-step forecasts from the na?ve method perform better than the forecast values under consideration.
 
 
 ## How to Use
@@ -35,8 +35,8 @@ At minimum, this metric requires predictions, references and training data as in
 
 ```python
 >>> mase_metric = evaluate.load("mase")
->>> predictions = [2.5, 0.0, 2, 8]
->>> references = [3, -0.5, 2, 7]
+>>> predictions = [2.5, 0.0, 2, 8, 1.25]
+>>> references = [3, -0.5, 2, 7, 2]
 >>> training = [5, 0.5, 4, 6, 3, 5, 2]
 >>> results = mase_metric.compute(predictions=predictions, references=references, training=training)
 ```
@@ -53,15 +53,15 @@ Optional arguments:
 - `sample_weight`: numeric array-like of shape (`n_samples,`) representing sample weights. The default is `None`.
 - `multioutput`: `raw_values`, `uniform_average` or numeric array-like of shape (`n_outputs,`), which defines the aggregation of multiple output values. The default value is `uniform_average`.
   - `raw_values` returns a full set of errors in case of multioutput input.
-  - `uniform_average` means that the errors of all outputs are averaged with uniform weight. 
+  - `uniform_average` means that the scaled errors of all outputs are averaged with uniform weight. Each output is scaled by its own training-set naive forecast error before aggregation.
   - the array-like value defines weights used to average errors.
 
 ### Output Values
-This metric outputs a dictionary, containing the mean absolute error score, which is of type:
+This metric outputs a dictionary, containing the mean absolute scaled error score, which is of type:
 - `float`: if multioutput is `uniform_average` or an ndarray of weights, then the weighted average of all output errors is returned.
 - numeric array-like of shape (`n_outputs,`): if multioutput is `raw_values`, then the score is returned for each output separately. 
 
-Each MASE `float` value ranges from `0.0` to `1.0`, with the best value being 0.0.
+Each MASE `float` value is non-negative, with the best value being 0.0. Values can exceed 1.0.
 
 Output Example(s):
 ```python
@@ -81,29 +81,31 @@ If `multioutput="raw_values"`:
 Example with the `uniform_average` config:
 ```python
 >>> mase_metric = evaluate.load("mase")
->>> predictions = [2.5, 0.0, 2, 8]
->>> references = [3, -0.5, 2, 7]
+>>> predictions = [2.5, 0.0, 2, 8, 1.25]
+>>> references = [3, -0.5, 2, 7, 2]
 >>> training = [5, 0.5, 4, 6, 3, 5, 2]
 >>> results = mase_metric.compute(predictions=predictions, references=references, training=training)
 >>> print(results)
 {'mase': 0.1833...}
 ```
 
-Example with multi-dimensional lists, and the `raw_values` config:
+Example with multi-dimensional lists:
 ```python
 >>> mase_metric = evaluate.load("mase", "multilist")
->>> predictions = [[0.5, 1], [-1, 1], [7, -6]]
->>> references = [[0.1, 2], [-1, 2], [8, -5]]
+>>> predictions = [[0, 2], [-1, 2], [8, -5]]
+>>> references = [[0.5, 1], [-1, 1], [7, -6]]
 >>> training = [[0.5, 1], [-1, 1], [7, -6]]
 >>> results = mase_metric.compute(predictions=predictions, references=references, training=training)
 >>> print(results)
-{'mase': 0.1818...}
+{'mase': 0.1954...}
 >>> results = mase_metric.compute(predictions=predictions, references=references, training=training, multioutput='raw_values')
 >>> print(results)
 {'mase': array([0.1052..., 0.2857...])}
 ```
 
 ## Limitations and Bias
+
+Multioutput aggregation averages the per-output MASE values, rather than dividing the averaged forecast MAE by the averaged naive MAE. This changes aggregate scores from earlier versions when output scales differ; univariate scores and `raw_values` are unchanged.
 
 
 ## Citation(s)

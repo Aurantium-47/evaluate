@@ -53,7 +53,7 @@ Args:
     sample_weight: array-like of shape (n_samples,), default=None
         Sample weights.
     multioutput: {"raw_values", "uniform_average"} or array-like of shape (n_outputs,), default="uniform_average"
-        Defines aggregating of multiple output values. Array-like value defines weights used to average errors.
+        Defines aggregating of multiple output values after each output is scaled by its own naive forecast error. Array-like value defines weights used to average the scaled errors.
 
                  "raw_values" : Returns a full set of errors in case of multioutput input.
 
@@ -61,7 +61,7 @@ Args:
 
 Returns:
     mase : mean absolute scaled error.
-        If multioutput is "raw_values", then mean absolute percentage error is returned for each output separately. If multioutput is "uniform_average" or an ndarray of weights, then the weighted average of all output errors is returned.
+        If multioutput is "raw_values", then mean absolute scaled error is returned for each output separately. If multioutput is "uniform_average" or an ndarray of weights, then the weighted average of all output errors is returned.
         MASE output is non-negative floating point. The best value is 0.0.
 Examples:
 
@@ -81,13 +81,13 @@ Examples:
     >>> training = [[0.5, 1], [-1, 1], [7, -6]]
     >>> results = mase_metric.compute(predictions=predictions, references=references, training=training)
     >>> print(results)
-    {'mase': 0.18181818181818182}
+    {'mase': 0.19548872180451127}
     >>> results = mase_metric.compute(predictions=predictions, references=references, training=training, multioutput='raw_values')
     >>> print(results)
     {'mase': array([0.10526316, 0.28571429])}
     >>> results = mase_metric.compute(predictions=predictions, references=references, training=training, multioutput=[0.3, 0.7])
     >>> print(results)
-    {'mase': 0.21935483870967742}
+    {'mase': 0.23157894736842102}
 """
 
 
@@ -125,16 +125,29 @@ class Mase(evaluate.Metric):
     ):
 
         y_pred_naive = training[:-periodicity]
-        mae_naive = mean_absolute_error(training[periodicity:], y_pred_naive, multioutput=multioutput)
+        mae_naive = mean_absolute_error(training[periodicity:], y_pred_naive, multioutput="raw_values")
 
         mae_score = mean_absolute_error(
             references,
             predictions,
             sample_weight=sample_weight,
-            multioutput=multioutput,
+            multioutput="raw_values",
         )
 
         epsilon = np.finfo(np.float64).eps
         mase_score = mae_score / np.maximum(mae_naive, epsilon)
 
-        return {"mase": mase_score}
+        if isinstance(multioutput, str):
+            if multioutput == "raw_values":
+                return {"mase": mase_score}
+            if multioutput != "uniform_average":
+                raise ValueError("multioutput must be 'raw_values', 'uniform_average', or an array of weights")
+            multioutput = None
+        else:
+            multioutput = np.asarray(multioutput)
+            if mase_score.size == 1:
+                raise ValueError("Custom weights are useful only in multi-output cases.")
+            if multioutput.ndim != 1 or len(multioutput) != mase_score.size:
+                raise ValueError("There must be equally many custom weights and outputs.")
+
+        return {"mase": np.average(mase_score, weights=multioutput)}
