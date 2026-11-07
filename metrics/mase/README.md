@@ -1,6 +1,6 @@
 ---
 title: MASE
-emoji: ?? 
+emoji: 🤗 
 colorFrom: blue
 colorTo: red
 sdk: gradio
@@ -26,7 +26,7 @@ This metric is:
 *  independent of the scale of the data;
 * has predictable behavior when predicted/ground-truth data is near zero;
 *  symmetric;
-* interpretable,  as values greater than one indicate that in-sample one-step forecasts from the na?ve method perform better than the forecast values under consideration.
+* interpretable,  as values greater than one indicate that in-sample one-step forecasts from the naïve method perform better than the forecast values under consideration.
 
 
 ## How to Use
